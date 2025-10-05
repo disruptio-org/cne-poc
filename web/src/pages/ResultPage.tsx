@@ -9,6 +9,7 @@ interface PreviewResponse {
   headers: string[];
   rows: PreviewRow[];
   total_rows: number;
+  metadata: Record<string, unknown>;
 }
 
 const ResultPage = () => {

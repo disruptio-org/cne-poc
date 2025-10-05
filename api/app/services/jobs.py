@@ -74,6 +74,7 @@ class JobService:
             "csv_ready": False,
             "error": None,
             "approved_at": None,
+            "ocr_conf_mean": None,
         }
         with self._lock:
             self._state[job_id] = record
@@ -100,6 +101,12 @@ class JobService:
             if job_id not in self._state:
                 raise KeyError(job_id)
             record = self._state[job_id]
+            metadata_update = updates.pop("metadata", None)
+            if metadata_update is not None:
+                merged_metadata = {**record.get("metadata", {}), **metadata_update}
+                record["metadata"] = merged_metadata
+                if "ocr_conf_mean" in metadata_update:
+                    record["ocr_conf_mean"] = metadata_update["ocr_conf_mean"]
             record.update(updates)
             record["status"] = status.value
             record["updated_at"] = datetime.utcnow().isoformat()

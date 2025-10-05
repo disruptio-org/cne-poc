@@ -21,6 +21,7 @@ class PreviewResponse(BaseModel):
     headers: list[str]
     rows: list[PreviewRow]
     total_rows: int
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class CsvDownload(BaseModel):

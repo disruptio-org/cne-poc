@@ -8,6 +8,7 @@ export interface JobSummary {
   created_at: string;
   updated_at: string;
   error?: string | null;
+  ocr_conf_mean?: number | null;
 }
 
 export interface JobDetail extends JobSummary {
