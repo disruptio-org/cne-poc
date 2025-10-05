@@ -1,0 +1,18 @@
+[
+  {
+    "sigla": "MEC",
+    "descricao": "Ministério da Educação",
+    "codigo": "001",
+    "metadata": {
+      "uf": "BR"
+    }
+  },
+  {
+    "sigla": "INEP",
+    "descricao": "Instituto Nacional de Estudos e Pesquisas Educacionais",
+    "codigo": "002",
+    "metadata": {
+      "uf": "BR"
+    }
+  }
+]
