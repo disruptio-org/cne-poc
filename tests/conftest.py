@@ -22,6 +22,7 @@ from api.app.services.jobs import JobService
 from worker.src import fuzzy
 
 BASE_DOCUMENT = """CNE Diário Oficial
+dtmnfr: 2024-03-15
 orgao: Conselho Nacional de Educação
 lista: Lista Unica
 tipo: Titular
@@ -33,9 +34,19 @@ competencia: 2024
 observacao: Nomeacao publicada
 
 orgao: Conselho Nacional de Educação
+lista: Lista Unica
+tipo: Titular
+sigla: mec
+descricao: Segundo titular mesma lista
+valor: 980
+fonte: DOU
+competencia: 2024
+observacao: Nomeacao complementar
+
+orgao: Conselho Nacional de Educação
 lista: Coligacao Educação & Cidadania
 tipo: Titular
-sigla: inep
+sigla: mec
 descricao: Titular coligacao com simbolos
 valor: 950
 fonte: DOU

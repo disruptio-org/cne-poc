@@ -38,8 +38,17 @@ def test_pipeline_outputs_match_golden(
     actual_rows = _load_csv(csv_path)
     assert actual_rows == golden_rows
 
-    counters: dict[str, int] = defaultdict(int)
+    counters: dict[tuple[str, str, str, str, str], int] = defaultdict(int)
     for row in actual_rows:
+        key = (
+            row.get("dtmnfr", ""),
+            row.get("orgao", "").upper(),
+            row.get("sigla", "").upper(),
+            row.get("lista", "").upper(),
+            row.get("tipo", "").upper(),
+        )
+        counters[key] += 1
+        assert row["num_ordem"] == str(counters[key])
         counters[row["TIPO"]] += 1
         assert row["NUM_ORDEM"] == str(counters[row["TIPO"]])
 

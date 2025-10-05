@@ -1,3 +1,9 @@
+orgao,lista,tipo,num_ordem,linha,descricao,valor,sigla,fonte,competencia,observacao,dtmnfr
+"Conselho Nacional de Educação","Lista Unica",TITULAR,1,11,"Representante titular unico",1000,MEC,DOU,2024,"Ministério da Educação",2024-03-15
+"Conselho Nacional de Educação","Lista Unica",TITULAR,2,20,"Segundo titular mesma lista",980,MEC,DOU,2024,"Ministério da Educação",2024-03-15
+"Conselho Nacional de Educação","Coligacao Educação & Cidadania",TITULAR,1,29,"Titular coligacao com simbolos",950,MEC,DOU,2024,"Ministério da Educação",2024-03-15
+"Conselho Nacional de Educação","Lista Unica",SUPLENTE,1,37,"Suplente aguardando confirmacao",0,"",DOU,2024,"OCR incerta",2024-03-15
+"Conselho Nacional de Educação","Grupo GCE § Educação",GCE,1,46,"Grupo consultivo especial",0,GCE,"Memo Nº 10",2024,"Grupo Consultivo Especial",2024-03-15
 DTMNFR;ORGAO;TIPO;SIGLA;SIMBOLO;NOME_LISTA;NUM_ORDEM;NOME_CANDIDATO;PARTIDO_PROPONENTE;INDEPENDENTE
 2024;Conselho Nacional de Educação;2;MEC;;Lista Unica;1;Representante titular unico;Ministério da Educação;S
 2024;Conselho Nacional de Educação;2;INEP;EC;Educação & Cidadania;2;Titular coligacao com simbolos;Instituto Nacional de Estudos e Pesquisas Educacionais;N
