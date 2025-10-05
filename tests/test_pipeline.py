@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import json
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -85,9 +86,35 @@ def test_approval_promotes_artifacts(
     approval_request = ApprovalRequest(approver="admin", notes="ok")
     job_service.approve(job_id, approver=approval_request.approver, notes=approval_request.notes)
 
-    approved_csv = jobs_module.APPROVED_DIR / job_id / "output.csv"
+    approved_job = job_service.get(job_id)
+    assert approved_job.approved_at is not None
+    approved_at = approved_job.approved_at
+    if isinstance(approved_at, str):
+        approved_at = datetime.fromisoformat(approved_at)
+    approved_date = approved_at.strftime("%Y-%m-%d")
+    approval_dir = jobs_module.APPROVED_DIR / approved_date / job_id
+    assert approval_dir.exists(), "Approved directory should include date partition"
+
+    approved_csv = approval_dir / "output.csv"
     assert approved_csv.exists(), "Approved CSV should be copied to the approved directory"
     assert _load_csv(approved_csv) == golden_rows
+
+    preview_path = approval_dir / "preview.json"
+    assert preview_path.exists(), "Preview JSON should be copied to the approved directory"
+
+    uploads_dir = approval_dir / "incoming"
+    assert uploads_dir.exists(), "Incoming uploads should be preserved"
+    original_uploads = list(uploads_dir.iterdir())
+    assert original_uploads, "Original uploads should be copied"
+    assert original_uploads[0].read_bytes() == pdf_sample.read_bytes()
+
+    meta_path = approval_dir / "meta.json"
+    assert meta_path.exists(), "meta.json should be written for approved jobs"
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    assert meta["job"]["job_id"] == job_id
+    assert meta["job"]["metadata"]["approved_by"] == approval_request.approver
+    assert meta["versions"]["model"]["version"], "Model version should be recorded"
+    assert meta["versions"]["master_data"] == job_service._master_data_version()  # type: ignore[attr-defined]
 
     registry_file = isolated_data_dirs.state / "model_registry.json"
     assert registry_file.exists()
@@ -97,3 +124,27 @@ def test_approval_promotes_artifacts(
     assert latest["model_name"] == f"dataset-{job_id}"
     assert latest["status"] == "candidate"
     assert latest["metrics"]["rows"] == len(golden_rows)
+
+
+def test_approval_emits_event(
+    job_factory,
+    job_service: jobs_module.JobService,
+    pdf_sample: Path,
+    isolated_data_dirs,
+) -> None:
+    events: list[dict] = []
+
+    def _listener(payload: dict) -> None:
+        events.append(payload)
+
+    jobs_module.subscribe("result.approved", _listener)
+
+    job_id = job_factory(pdf_sample)
+    process_job(job_id)
+    approval_request = ApprovalRequest(approver="listener", notes=None)
+    job_service.approve(job_id, approver=approval_request.approver, notes=approval_request.notes)
+
+    assert events, "result.approved event should be emitted"
+    payload = events[0]
+    assert payload["meta"]["job"]["job_id"] == job_id
+    assert Path(payload["path"]).exists()

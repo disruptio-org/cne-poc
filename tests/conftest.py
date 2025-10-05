@@ -4,6 +4,7 @@ import csv
 import json
 import shutil
 import sys
+from collections import defaultdict
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Callable
@@ -76,7 +77,8 @@ def isolated_data_dirs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Simpl
     processed = data_dir / "processed"
     approved = data_dir / "approved"
     state_dir = data_dir / "state"
-    for directory in (incoming, processed, approved, state_dir):
+    master_dir = data_dir / "master"
+    for directory in (incoming, processed, approved, state_dir, master_dir):
         directory.mkdir(parents=True, exist_ok=True)
 
     monkeypatch.setattr(jobs_module, "STATE_FILE", state_dir / "jobs.json")
@@ -84,6 +86,8 @@ def isolated_data_dirs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Simpl
     monkeypatch.setattr(jobs_module, "INCOMING_DIR", incoming)
     monkeypatch.setattr(jobs_module, "PROCESSED_DIR", processed)
     monkeypatch.setattr(jobs_module, "APPROVED_DIR", approved)
+    monkeypatch.setattr(jobs_module, "MASTER_DATA_DIR", master_dir)
+    monkeypatch.setattr(jobs_module, "_EVENT_LISTENERS", defaultdict(list))
     for directory in (jobs_module.STATE_FILE.parent, incoming, processed, approved):
         directory.mkdir(parents=True, exist_ok=True)
 
@@ -96,6 +100,10 @@ def isolated_data_dirs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Simpl
 
     registry_module.REGISTRY_FILE = state_dir / "model_registry.json"
     registry_module.REGISTRY_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+    import api.app.services.master_data as master_data_module
+
+    monkeypatch.setattr(master_data_module, "DATA_DIR", master_dir)
 
     return SimpleNamespace(incoming=incoming, processed=processed, approved=approved, state=state_dir)
 

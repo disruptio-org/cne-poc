@@ -6,13 +6,15 @@ import logging
 import shutil
 import threading
 import uuid
+from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, Dict
 
 from ..schemas import JobCreate, JobDetail, JobList, JobStatus, JobSummary
 from .metrics import MetricsService
-from ml.registry import ModelRegistry
+from .master_data import DATA_DIR as MASTER_DATA_DIR
+from ml.registry import ModelRecord, ModelRegistry
 
 LOGGER = logging.getLogger(__name__)
 STATE_FILE = Path("data/state/jobs.json")
@@ -20,6 +22,28 @@ QUEUE_FILE = Path("data/state/queue.jsonl")
 INCOMING_DIR = Path("data/incoming")
 PROCESSED_DIR = Path("data/processed")
 APPROVED_DIR = Path("data/approved")
+
+EventCallback = Callable[[dict[str, Any]], None]
+_EVENT_LISTENERS: Dict[str, list[EventCallback]] = defaultdict(list)
+
+
+def subscribe(event_name: str, callback: EventCallback) -> None:
+    _EVENT_LISTENERS[event_name].append(callback)
+
+
+def clear_event_listeners(event_name: str | None = None) -> None:
+    if event_name:
+        _EVENT_LISTENERS.pop(event_name, None)
+    else:
+        _EVENT_LISTENERS.clear()
+
+
+def emit(event_name: str, payload: dict[str, Any]) -> None:
+    for callback in list(_EVENT_LISTENERS.get(event_name, [])):
+        try:
+            callback(payload)
+        except Exception:  # pragma: no cover - defensive logging
+            LOGGER.exception("Event listener for %s failed", event_name)
 
 for directory in (STATE_FILE.parent, INCOMING_DIR, PROCESSED_DIR, APPROVED_DIR):
     directory.mkdir(parents=True, exist_ok=True)
@@ -99,31 +123,96 @@ class JobService:
         )
         self._metrics.increment("jobs.approved")
         try:
-            self._materialize_approval(job_id)
+            self._materialize_approval(updated)
         except FileNotFoundError:
             LOGGER.warning("Approved job %s is missing processed artifacts", job_id)
         return updated
 
-    def _materialize_approval(self, job_id: str) -> None:
+    def _materialize_approval(self, job: JobDetail) -> None:
+        job_id = job.job_id
         processed_dir = PROCESSED_DIR / job_id
         csv_src = processed_dir / "output.csv"
         if not csv_src.exists():
             raise FileNotFoundError(csv_src)
-        approved_dir = APPROVED_DIR / job_id
+        approved_value = job.approved_at or datetime.utcnow()
+        if isinstance(approved_value, str):
+            approved_dt = datetime.fromisoformat(approved_value)
+        else:
+            approved_dt = approved_value
+        approved_date = approved_dt.strftime("%Y-%m-%d")
+        approved_dir = APPROVED_DIR / approved_date / job_id
         approved_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(csv_src, approved_dir / "output.csv")
+        csv_dest = approved_dir / "output.csv"
+        shutil.copy2(csv_src, csv_dest)
         preview_src = processed_dir / "preview.json"
+        preview_dest: Path | None = None
         if preview_src.exists():
-            shutil.copy2(preview_src, approved_dir / "preview.json")
-        self._register_candidate(job_id, csv_src)
+            preview_dest = approved_dir / "preview.json"
+            shutil.copy2(preview_src, preview_dest)
 
-    def _register_candidate(self, job_id: str, csv_path: Path) -> None:
+        incoming_dir = INCOMING_DIR / job_id
+        incoming_dest = approved_dir / "incoming"
+        if incoming_dir.exists():
+            incoming_dest.mkdir(parents=True, exist_ok=True)
+            for source in incoming_dir.iterdir():
+                destination = incoming_dest / source.name
+                if source.is_dir():
+                    shutil.copytree(source, destination, dirs_exist_ok=True)
+                else:
+                    shutil.copy2(source, destination)
+
+        record = self._register_candidate(job_id, csv_src)
+        meta = self._build_meta(job, record, csv_dest, preview_dest, incoming_dest)
+        meta_path = approved_dir / "meta.json"
+        meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+        emit("result.approved", {"meta": meta, "path": str(approved_dir)})
+
+    def _register_candidate(self, job_id: str, csv_path: Path) -> ModelRecord:
         with csv_path.open(encoding="utf-8") as handle:
             reader = csv.DictReader(handle)
             rows = list(reader)
         metrics = {"rows": len(rows), "job_id": job_id}
         registry = ModelRegistry()
-        registry.register(model_name=f"dataset-{job_id}", metrics=metrics, status="candidate")
+        return registry.register(model_name=f"dataset-{job_id}", metrics=metrics, status="candidate")
+
+    def _build_meta(
+        self,
+        job: JobDetail,
+        record: ModelRecord,
+        csv_dest: Path,
+        preview_dest: Path | None,
+        incoming_dest: Path,
+    ) -> dict[str, Any]:
+        job_payload = json.loads(job.json())
+        artifacts: dict[str, Any] = {
+            "csv": csv_dest.name,
+            "preview": preview_dest.name if preview_dest else None,
+            "incoming": sorted(
+                [path.name for path in incoming_dest.iterdir() if path.is_file()]
+            ) if incoming_dest.exists() else [],
+        }
+        versions = {
+            "model": {
+                "name": record.model_name,
+                "version": record.version,
+                "status": record.status,
+            },
+            "master_data": self._master_data_version(),
+        }
+        return {"job": job_payload, "artifacts": artifacts, "versions": versions}
+
+    def _master_data_version(self) -> str:
+        files = sorted(MASTER_DATA_DIR.glob("*.json"))
+        if not files:
+            return "empty"
+        import hashlib
+
+        digest = hashlib.sha256()
+        for file in files:
+            if file.is_file():
+                digest.update(file.name.encode("utf-8"))
+                digest.update(file.read_bytes())
+        return digest.hexdigest()
 
     def record_error(self, job_id: str, error: str) -> None:
         LOGGER.error("Job %s failed: %s", job_id, error, extra={"job_id": job_id, "error": error})
