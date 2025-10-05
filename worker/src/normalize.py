@@ -3,26 +3,7 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 from typing import Iterable, List, Tuple
-
-from .extract import EXPECTED_COLUMNS
 from .fuzzy import match_sigla
-
-NORMALIZED_COLUMNS = [
-    "orgao",
-    "lista",
-    "tipo",
-    "num_ordem",
-    "linha",
-    "descricao",
-    "valor",
-    "sigla",
-    "fonte",
-    "competencia",
-    "observacao",
-    "dtmnfr",
-    "nome_lista",
-]
-NORMALIZED_COLUMNS = EXPECTED_COLUMNS
 
 
 def _normalize_tipo(value: str) -> str:
@@ -111,41 +92,55 @@ def normalize(records: Iterable[dict[str, str]]) -> List[dict[str, str]]:
             nome_lista.upper(),
             tipo,
         )
+        dtmnfr = (record.get("DTMNFR", "") or "").strip()
+        orgao = (record.get("ORGAO", "") or "").strip()
+        raw_tipo = record.get("TIPO", "") or ""
+        tipo = _normalize_tipo(raw_tipo)
+
+        raw_lista = record.get("_raw_lista") or record.get("NOME_LISTA", "")
+        raw_lista = raw_lista.strip()
+        nome_lista_hint = (record.get("NOME_LISTA", "") or "").strip()
+        nome_lista_from_raw, simbolo = _split_lista(raw_lista or nome_lista_hint)
+        nome_lista = nome_lista_hint or nome_lista_from_raw
+
+        independente = _is_independent(raw_lista or nome_lista)
+
+        sigla_value = (record.get("SIGLA", "") or "").strip()
+        sigla_raw = (record.get("_raw_sigla") or sigla_value).strip()
+        partido = (record.get("PARTIDO_PROPONENTE", "") or "").strip()
+        sigla = ""
+        metadata: dict | None = None
+        if sigla_raw:
+            sigla, metadata = match_sigla(sigla_raw)
+        elif sigla_value:
+            sigla, metadata = match_sigla(sigla_value)
+        if metadata:
+            partido = metadata.get("descricao", partido)
+        elif not partido and sigla_raw:
+            partido = sigla_raw.upper()
+        if not sigla:
+            sigla = sigla_raw.upper() if sigla_raw else sigla_value.upper()
+
+        nome_candidato = " ".join((record.get("NOME_CANDIDATO", "") or "").split())
+
+        counter_key = (dtmnfr, orgao.upper(), sigla.upper(), nome_lista.upper(), tipo)
+        num_ordem = ""
         if tipo:
             counters[counter_key] += 1
-            data["num_ordem"] = str(counters[counter_key])
-        else:
-            data["num_ordem"] = data.get("num_ordem", "")
+            num_ordem = str(counters[counter_key])
 
-        raw_lista = record.get("_raw_lista", data.get("NOME_LISTA", ""))
-        nome_lista, simbolo = _split_lista(raw_lista)
-        data["NOME_LISTA"] = nome_lista
-        data["SIMBOLO"] = simbolo
-
-        data["INDEPENDENTE"] = _is_independent(raw_lista)
-
-        tipo_code = _normalize_tipo(record.get("TIPO", ""))
-        data["TIPO"] = tipo_code
-        if tipo_code:
-            counters[tipo_code] += 1
-            data["NUM_ORDEM"] = str(counters[tipo_code])
-        else:
-            data["NUM_ORDEM"] = data.get("NUM_ORDEM", "")
-
-        sigla_raw = record.get("_raw_sigla", data.get("SIGLA", ""))
-        if sigla_raw:
-            matched_sigla, metadata = match_sigla(sigla_raw)
-            data["SIGLA"] = matched_sigla
-            if metadata:
-                data["PARTIDO_PROPONENTE"] = metadata.get(
-                    "descricao", data.get("PARTIDO_PROPONENTE", "")
-                )
-            elif not data.get("PARTIDO_PROPONENTE"):
-                data["PARTIDO_PROPONENTE"] = sigla_raw.upper()
-        else:
-            data["SIGLA"] = ""
-
-        data["NOME_CANDIDATO"] = " ".join(data["NOME_CANDIDATO"].split())
-
-        normalized.append(data)
+        normalized.append(
+            {
+                "DTMNFR": dtmnfr,
+                "ORGAO": orgao,
+                "TIPO": tipo,
+                "SIGLA": sigla,
+                "SIMBOLO": simbolo,
+                "NOME_LISTA": nome_lista,
+                "NUM_ORDEM": num_ordem,
+                "NOME_CANDIDATO": nome_candidato,
+                "PARTIDO_PROPONENTE": partido,
+                "INDEPENDENTE": independente,
+            }
+        )
     return normalized

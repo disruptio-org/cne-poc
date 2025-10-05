@@ -41,20 +41,22 @@ def test_pipeline_outputs_match_golden(
     counters: dict[tuple[str, str, str, str, str], int] = defaultdict(int)
     for row in actual_rows:
         key = (
-            row.get("dtmnfr", ""),
-            row.get("orgao", "").upper(),
-            row.get("sigla", "").upper(),
-            row.get("lista", "").upper(),
-            row.get("tipo", "").upper(),
+            row.get("DTMNFR", ""),
+            row.get("ORGAO", "").upper(),
+            row.get("SIGLA", "").upper(),
+            row.get("NOME_LISTA", "").upper(),
+            row.get("TIPO", ""),
         )
         counters[key] += 1
-        assert row["num_ordem"] == str(counters[key])
-        counters[row["TIPO"]] += 1
-        assert row["NUM_ORDEM"] == str(counters[row["TIPO"]])
+        assert row["NUM_ORDEM"] == str(counters[key])
 
     preview_path = jobs_module.PROCESSED_DIR / job_id / "preview.json"
     preview = preview_loader(preview_path)
     assert preview["total_rows"] == len(golden_rows)
+    assert preview["headers"][3] == "num_ordem"
+    assert "metadata" in preview
+    assert "ocr_conf_mean" in preview["metadata"]
+    assert 0.0 <= preview["metadata"]["ocr_conf_mean"] <= 1.0
     assert preview["headers"][6] == "NUM_ORDEM"
     sigla_statuses = []
     for row in preview["rows"]:
@@ -85,6 +87,23 @@ def test_low_confidence_rows_flagged(
         row for row in data["rows"] if any(badge["status"] == "aviso" for badge in row["validations"])
     ]
     assert low_confidence_rows, "Expected at least one row flagged with low confidence warnings"
+
+
+def test_ocr_confidence_persisted(
+    pdf_sample: Path,
+    job_factory,
+    preview_loader,
+) -> None:
+    job_id = job_factory(pdf_sample)
+    process_job(job_id)
+
+    preview_path = jobs_module.PROCESSED_DIR / job_id / "preview.json"
+    preview = preview_loader(preview_path)
+    conf_from_preview = preview["metadata"]["ocr_conf_mean"]
+
+    detail = jobs_module.JobService().get(job_id)
+    assert detail.metadata.get("ocr_conf_mean") == pytest.approx(conf_from_preview)
+    assert detail.ocr_conf_mean == pytest.approx(conf_from_preview)
 
 
 def test_approval_promotes_artifacts(

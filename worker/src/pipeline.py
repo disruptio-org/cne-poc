@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import logging
+from statistics import fmean
 from pathlib import Path
 
 from api.app.schemas import PreviewResponse, PreviewRow
-from api.app.services.jobs import INCOMING_DIR, PROCESSED_DIR, JobService
+from api.app.services.jobs import INCOMING_DIR, PROCESSED_DIR, JobService, JobStatus
 from api.app.services.metrics import MetricsService
 
 from . import csv_writer, extract, layout, normalize, ocr, segment, validate
@@ -28,8 +29,10 @@ def process_job(job_id: str) -> None:
         job_service.set_processing(job_id)
         file_path = _first_file(incoming_dir)
         LOGGER.info("Processing job %s from %s", job_id, file_path)
-        lines = list(ocr.run_ocr(file_path))
-        layout_info = layout.detect_layout(lines)
+        ocr_lines = list(ocr.run_ocr(file_path))
+        confidences = [line.confidence for line in ocr_lines]
+        ocr_conf_mean = fmean(confidences) if confidences else 0.0
+        layout_info = layout.detect_layout([line.text for line in ocr_lines])
         segments = segment.segment_lines(layout_info)
         raw_records = extract.extract_records(segments)
         normalized_records = normalize.normalize(raw_records)
@@ -47,12 +50,18 @@ def process_job(job_id: str) -> None:
             headers=extract.EXPECTED_COLUMNS,
             rows=preview_rows,
             total_rows=len(preview_rows),
+            metadata={"ocr_conf_mean": ocr_conf_mean},
         )
         processed_dir.mkdir(parents=True, exist_ok=True)
         preview_path = processed_dir / "preview.json"
         preview_path.write_text(preview.json(indent=2, ensure_ascii=False), encoding="utf-8")
         LOGGER.info("Job %s processed successfully", job_id)
         job_service.set_completed(job_id)
+        job_service.update_status(
+            job_id,
+            JobStatus.COMPLETED,
+            metadata={"ocr_conf_mean": ocr_conf_mean},
+        )
         metrics.increment("worker.jobs.completed")
     except Exception as exc:  # pragma: no cover - defensive flow
         LOGGER.exception("Job %s failed", job_id)

@@ -28,6 +28,10 @@ class JobSummary(BaseModel):
     created_at: datetime
     updated_at: datetime
     error: Optional[str] = None
+    ocr_conf_mean: Optional[float] = Field(
+        default=None,
+        description="Average OCR confidence score for processed documents.",
+    )
 
 
 class JobDetail(JobSummary):
