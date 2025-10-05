@@ -156,6 +156,8 @@ def test_approval_promotes_artifacts(
     assert latest["model_name"] == f"dataset-{job_id}"
     assert latest["status"] == "candidate"
     assert latest["metrics"]["rows"] == len(golden_rows)
+    assert latest["metrics"]["sample_orgao"] == golden_rows[0]["ORGAO"]
+    assert latest["metrics"]["sample_tipo"] == golden_rows[0]["TIPO"]
 
 
 def test_approval_emits_event(
