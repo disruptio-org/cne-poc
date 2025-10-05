@@ -49,6 +49,7 @@ def _valid_date(value: str) -> bool:
         except ValueError:
             continue
     return False
+REQUIRED_COLUMNS = ["ORGAO", "NOME_LISTA", "TIPO", "SIGLA"]
 
 
 def validate(records: Iterable[dict[str, str]]) -> List[List[ValidationBadge]]:
