@@ -165,7 +165,7 @@ def zip_sample(tmp_path: Path) -> Path:
 def golden_rows() -> list[dict[str, str]]:
     golden_path = Path("samples/golden/example_output.csv")
     with golden_path.open(encoding="utf-8") as handle:
-        reader = csv.DictReader(handle)
+        reader = csv.DictReader(handle, delimiter=";")
         return list(reader)
 
 

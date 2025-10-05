@@ -5,7 +5,7 @@ from typing import Iterable, List
 from api.app.schemas import ValidationBadge
 
 
-REQUIRED_COLUMNS = ["orgao", "lista", "tipo", "sigla"]
+REQUIRED_COLUMNS = ["ORGAO", "NOME_LISTA", "TIPO", "SIGLA"]
 
 
 def validate(records: Iterable[dict[str, str]]) -> List[List[ValidationBadge]]:

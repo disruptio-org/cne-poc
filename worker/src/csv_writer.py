@@ -12,7 +12,7 @@ def write_csv(job_id: str, records: Iterable[dict[str, str]], base_dir: Path) ->
     job_dir.mkdir(parents=True, exist_ok=True)
     csv_path = job_dir / "output.csv"
     with csv_path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=EXPECTED_COLUMNS)
+        writer = csv.DictWriter(handle, fieldnames=EXPECTED_COLUMNS, delimiter=";")
         writer.writeheader()
         for record in records:
             writer.writerow({key: record.get(key, "") for key in EXPECTED_COLUMNS})

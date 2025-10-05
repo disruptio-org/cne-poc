@@ -14,7 +14,7 @@ from worker.src.pipeline import process_job
 
 def _load_csv(path: Path) -> list[dict[str, str]]:
     with path.open(encoding="utf-8") as handle:
-        return list(csv.DictReader(handle))
+        return list(csv.DictReader(handle, delimiter=";"))
 
 
 @pytest.mark.parametrize(
@@ -39,20 +39,20 @@ def test_pipeline_outputs_match_golden(
 
     counters: dict[str, int] = defaultdict(int)
     for row in actual_rows:
-        counters[row["tipo"]] += 1
-        assert row["num_ordem"] == str(counters[row["tipo"]])
+        counters[row["TIPO"]] += 1
+        assert row["NUM_ORDEM"] == str(counters[row["TIPO"]])
 
     preview_path = jobs_module.PROCESSED_DIR / job_id / "preview.json"
     preview = preview_loader(preview_path)
     assert preview["total_rows"] == len(golden_rows)
-    assert preview["headers"][3] == "num_ordem"
+    assert preview["headers"][6] == "NUM_ORDEM"
     sigla_statuses = []
     for row in preview["rows"]:
         statuses = {badge["field"]: badge["status"] for badge in row["validations"]}
-        assert statuses.get("orgao") == "ok"
-        assert statuses.get("lista") == "ok"
-        assert statuses.get("tipo") == "ok"
-        sigla_statuses.append(statuses.get("sigla"))
+        assert statuses.get("ORGAO") == "ok"
+        assert statuses.get("NOME_LISTA") == "ok"
+        assert statuses.get("TIPO") == "ok"
+        sigla_statuses.append(statuses.get("SIGLA"))
     assert "warning" in sigla_statuses, "Rows with missing sigla should emit warnings"
 
 
