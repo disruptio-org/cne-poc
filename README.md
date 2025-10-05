@@ -38,4 +38,10 @@ docker-compose up --build
 
 ## Testing
 
-This proof-of-concept focuses on local workflows. Add your preferred test framework (e.g. pytest, vitest) as needed.
+Run the automated worker pipeline tests locally with:
+
+```bash
+make test
+```
+
+The suite runs entirely offline using pytest and synthetic fixtures so it can be executed without external services.

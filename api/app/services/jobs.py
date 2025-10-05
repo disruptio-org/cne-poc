@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import csv
 import json
 import logging
+import shutil
 import threading
 import uuid
 from datetime import datetime
@@ -10,14 +12,16 @@ from typing import Any
 
 from ..schemas import JobCreate, JobDetail, JobList, JobStatus, JobSummary
 from .metrics import MetricsService
+from ml.registry import ModelRegistry
 
 LOGGER = logging.getLogger(__name__)
 STATE_FILE = Path("data/state/jobs.json")
 QUEUE_FILE = Path("data/state/queue.jsonl")
 INCOMING_DIR = Path("data/incoming")
 PROCESSED_DIR = Path("data/processed")
+APPROVED_DIR = Path("data/approved")
 
-for directory in (STATE_FILE.parent, INCOMING_DIR, PROCESSED_DIR):
+for directory in (STATE_FILE.parent, INCOMING_DIR, PROCESSED_DIR, APPROVED_DIR):
     directory.mkdir(parents=True, exist_ok=True)
 
 
@@ -94,7 +98,32 @@ class JobService:
             metadata={**detail.metadata, "approved_by": approver, "notes": notes},
         )
         self._metrics.increment("jobs.approved")
+        try:
+            self._materialize_approval(job_id)
+        except FileNotFoundError:
+            LOGGER.warning("Approved job %s is missing processed artifacts", job_id)
         return updated
+
+    def _materialize_approval(self, job_id: str) -> None:
+        processed_dir = PROCESSED_DIR / job_id
+        csv_src = processed_dir / "output.csv"
+        if not csv_src.exists():
+            raise FileNotFoundError(csv_src)
+        approved_dir = APPROVED_DIR / job_id
+        approved_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(csv_src, approved_dir / "output.csv")
+        preview_src = processed_dir / "preview.json"
+        if preview_src.exists():
+            shutil.copy2(preview_src, approved_dir / "preview.json")
+        self._register_candidate(job_id, csv_src)
+
+    def _register_candidate(self, job_id: str, csv_path: Path) -> None:
+        with csv_path.open(encoding="utf-8") as handle:
+            reader = csv.DictReader(handle)
+            rows = list(reader)
+        metrics = {"rows": len(rows), "job_id": job_id}
+        registry = ModelRegistry()
+        registry.register(model_name=f"dataset-{job_id}", metrics=metrics, status="candidate")
 
     def record_error(self, job_id: str, error: str) -> None:
         LOGGER.error("Job %s failed: %s", job_id, error, extra={"job_id": job_id, "error": error})
