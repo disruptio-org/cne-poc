@@ -41,16 +41,14 @@ def test_pipeline_outputs_match_golden(
     counters: dict[tuple[str, str, str, str, str], int] = defaultdict(int)
     for row in actual_rows:
         key = (
-            row.get("dtmnfr", ""),
-            row.get("orgao", "").upper(),
-            row.get("sigla", "").upper(),
-            row.get("lista", "").upper(),
-            row.get("tipo", "").upper(),
+            row.get("DTMNFR", ""),
+            row.get("ORGAO", "").upper(),
+            row.get("SIGLA", "").upper(),
+            row.get("NOME_LISTA", "").upper(),
+            row.get("TIPO", ""),
         )
         counters[key] += 1
-        assert row["num_ordem"] == str(counters[key])
-        counters[row["TIPO"]] += 1
-        assert row["NUM_ORDEM"] == str(counters[row["TIPO"]])
+        assert row["NUM_ORDEM"] == str(counters[key])
 
     preview_path = jobs_module.PROCESSED_DIR / job_id / "preview.json"
     preview = preview_loader(preview_path)

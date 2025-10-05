@@ -1,21 +1,9 @@
 from __future__ import annotations
 
 import unicodedata
-from typing import Dict, Iterable, List
+from typing import Dict, Iterator, List
 
 EXPECTED_COLUMNS = [
-    "orgao",
-    "lista",
-    "tipo",
-    "num_ordem",
-    "linha",
-    "descricao",
-    "valor",
-    "sigla",
-    "fonte",
-    "competencia",
-    "observacao",
-    "dtmnfr",
     "DTMNFR",
     "ORGAO",
     "TIPO",
@@ -29,13 +17,26 @@ EXPECTED_COLUMNS = [
 ]
 
 FIELD_MAPPING = {
+    "dtmnfr": "DTMNFR",
+    "competencia": "DTMNFR",
     "orgao": "ORGAO",
     "lista": "NOME_LISTA",
     "tipo": "TIPO",
     "sigla": "SIGLA",
     "descricao": "NOME_CANDIDATO",
-    "competencia": "DTMNFR",
+    "partido_proponente": "PARTIDO_PROPONENTE",
 }
+
+METADATA_MAPPING = {
+    "dtmnfr": "DTMNFR",
+}
+
+
+def _init_record() -> dict[str, str]:
+    record = {column: "" for column in EXPECTED_COLUMNS}
+    record["_raw_lista"] = ""
+    record["_raw_sigla"] = ""
+    return record
 
 def _normalize_key(label: str) -> str:
     normalized = unicodedata.normalize("NFKD", label)
@@ -59,7 +60,7 @@ def _extract_metadata(segments: Dict[str, List[dict]]) -> dict[str, str]:
     return metadata
 
 
-def _iter_entries(segments: Dict[str, List[dict]]) -> Iterable[dict[str, str]]:
+def _iter_entries(segments: Dict[str, List[dict]]) -> Iterator[dict[str, str]]:
     for entry in sorted(
         (item for items in segments.values() for item in items),
         key=lambda data: data.get("index", 0),
@@ -69,24 +70,18 @@ def _iter_entries(segments: Dict[str, List[dict]]) -> Iterable[dict[str, str]]:
 
 def extract_records(segments: Dict[str, List[dict]]) -> List[dict[str, str]]:
     records: List[dict[str, str]] = []
-    current: dict[str, str] = {column: "" for column in EXPECTED_COLUMNS}
-    line_number = 1
     metadata = _extract_metadata(segments)
+    current = _init_record()
 
     def finalize_record() -> None:
         nonlocal current
-        if any(value for key, value in current.items() if key not in {"num_ordem"}):
+        if any(current.get(column) for column in ("ORGAO", "NOME_LISTA", "TIPO", "NOME_CANDIDATO")):
             record = current.copy()
-            for key, value in metadata.items():
-                if not record.get(key):
-                    record[key] = value
+            for meta_key, column in METADATA_MAPPING.items():
+                if not record.get(column):
+                    record[column] = metadata.get(meta_key, "")
             records.append(record)
-
-    def finalize_record() -> None:
-        nonlocal current
-        if any(value for key, value in current.items() if key not in {"NUM_ORDEM"}):
-            records.append(current.copy())
-        current = {column: "" for column in EXPECTED_COLUMNS}
+        current = _init_record()
 
     for entry in _iter_entries(segments):
         text = entry["content"].strip()
@@ -118,4 +113,4 @@ def extract_records(segments: Dict[str, List[dict]]) -> List[dict[str, str]]:
                 ).strip()
 
     finalize_record()
-    return [record for record in records if any(record.values())]
+    return records
