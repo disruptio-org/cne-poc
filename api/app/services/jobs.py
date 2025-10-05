@@ -176,9 +176,13 @@ class JobService:
 
     def _register_candidate(self, job_id: str, csv_path: Path) -> ModelRecord:
         with csv_path.open(encoding="utf-8") as handle:
-            reader = csv.DictReader(handle)
+            reader = csv.DictReader(handle, delimiter=";")
             rows = list(reader)
-        metrics = {"rows": len(rows), "job_id": job_id}
+        metrics: dict[str, Any] = {"rows": len(rows), "job_id": job_id}
+        if rows:
+            first_row = rows[0]
+            metrics["sample_orgao"] = first_row.get("ORGAO")
+            metrics["sample_tipo"] = first_row.get("TIPO")
         registry = ModelRegistry()
         return registry.register(model_name=f"dataset-{job_id}", metrics=metrics, status="candidate")
 
