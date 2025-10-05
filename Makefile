@@ -1,4 +1,4 @@
-.PHONY: api worker web registry seed develop
+.PHONY: api worker web registry seed develop test
 
 api:
 	uvicorn api.app.main:app --reload --host 0.0.0.0 --port 8000
@@ -16,4 +16,7 @@ seed:
 	python scripts/seed_master_data.py
 
 develop: seed
-	@echo "Run 'make api', 'make worker' and 'make web' in separate terminals."
+        @echo "Run 'make api', 'make worker' and 'make web' in separate terminals."
+
+test:
+pytest -q

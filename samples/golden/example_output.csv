@@ -1,0 +1,5 @@
+orgao,lista,tipo,num_ordem,linha,descricao,valor,sigla,fonte,competencia,observacao
+"Conselho Nacional de Educação","Lista Unica","Titular","1","10","Representante titular unico","1000","MEC","DOU","2024","Ministério da Educação"
+"Conselho Nacional de Educação","Coligacao Educação & Cidadania","Titular","2","19","Titular coligacao com simbolos","950","INEP","DOU","2024","Instituto Nacional de Estudos e Pesquisas Educacionais"
+"Conselho Nacional de Educação","Lista Unica","Suplente","1","27","Suplente aguardando confirmacao","0","","DOU","2024","OCR incerta"
+"Conselho Nacional de Educação","Grupo GCE § Educação","GCE","1","36","Grupo consultivo especial","0","GCE","Memo Nº 10","2024","Grupo Consultivo Especial"
