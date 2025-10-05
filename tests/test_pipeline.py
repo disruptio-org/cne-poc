@@ -37,10 +37,17 @@ def test_pipeline_outputs_match_golden(
     actual_rows = _load_csv(csv_path)
     assert actual_rows == golden_rows
 
-    counters: dict[str, int] = defaultdict(int)
+    counters: dict[tuple[str, str, str, str, str], int] = defaultdict(int)
     for row in actual_rows:
-        counters[row["tipo"]] += 1
-        assert row["num_ordem"] == str(counters[row["tipo"]])
+        key = (
+            row.get("dtmnfr", ""),
+            row.get("orgao", "").upper(),
+            row.get("sigla", "").upper(),
+            row.get("lista", "").upper(),
+            row.get("tipo", "").upper(),
+        )
+        counters[key] += 1
+        assert row["num_ordem"] == str(counters[key])
 
     preview_path = jobs_module.PROCESSED_DIR / job_id / "preview.json"
     preview = preview_loader(preview_path)
