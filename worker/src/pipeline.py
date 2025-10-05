@@ -36,7 +36,13 @@ def process_job(job_id: str) -> None:
         segments = segment.segment_lines(layout_info)
         raw_records = extract.extract_records(segments)
         normalized_records = normalize.normalize(raw_records)
-        validations = validate.validate(normalized_records)
+        validations = validate.validate(
+            normalized_records,
+            context={
+                "raw_records": raw_records,
+                "ocr_conf_mean": ocr_conf_mean,
+            },
+        )
         csv_writer.write_csv(job_id, normalized_records, PROCESSED_DIR)
         preview_rows = [
             PreviewRow(

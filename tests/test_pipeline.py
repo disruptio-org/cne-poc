@@ -53,19 +53,23 @@ def test_pipeline_outputs_match_golden(
     preview_path = jobs_module.PROCESSED_DIR / job_id / "preview.json"
     preview = preview_loader(preview_path)
     assert preview["total_rows"] == len(golden_rows)
-    assert preview["headers"][3] == "num_ordem"
+    assert preview["headers"][3] == "SIGLA"
     assert "metadata" in preview
     assert "ocr_conf_mean" in preview["metadata"]
     assert 0.0 <= preview["metadata"]["ocr_conf_mean"] <= 1.0
     assert preview["headers"][6] == "NUM_ORDEM"
     sigla_statuses = []
+    orgao_statuses = []
+    tipo_statuses = []
     for row in preview["rows"]:
         statuses = {badge["field"]: badge["status"] for badge in row["validations"]}
-        assert statuses.get("ORGAO") == "ok"
-        assert statuses.get("NOME_LISTA") == "ok"
-        assert statuses.get("TIPO") == "ok"
+        orgao_statuses.append(statuses.get("ORGAO"))
+        assert statuses.get("NOME_LISTA") == "OK"
+        tipo_statuses.append(statuses.get("TIPO"))
         sigla_statuses.append(statuses.get("SIGLA"))
-    assert "warning" in sigla_statuses, "Rows with missing sigla should emit warnings"
+    assert "ERRO" in orgao_statuses, "Órgãos fora do catálogo devem ser sinalizados"
+    assert "AVISO" in tipo_statuses, "Listas sem suplentes devem emitir avisos"
+    assert "AVISO" in sigla_statuses, "Rows com sigla ausente devem emitir avisos"
 
 
 @pytest.mark.parametrize("fixture_name", ["pdf_sample", "zip_sample"])
@@ -79,7 +83,7 @@ def test_low_confidence_rows_flagged(
     preview_path = jobs_module.PROCESSED_DIR / job_id / "preview.json"
     data = json.loads(preview_path.read_text(encoding="utf-8"))
     low_confidence_rows = [
-        row for row in data["rows"] if any(badge["status"] == "warning" for badge in row["validations"])
+        row for row in data["rows"] if any(badge["status"] == "AVISO" for badge in row["validations"])
     ]
     assert low_confidence_rows, "Expected at least one row flagged with low confidence warnings"
 
