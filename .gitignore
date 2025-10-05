@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+node_modules/
+web/node_modules/
+.env
+*.sqlite
+.data
