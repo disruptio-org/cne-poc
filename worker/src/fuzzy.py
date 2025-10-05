@@ -5,6 +5,9 @@ from difflib import get_close_matches
 from pathlib import Path
 from typing import Dict, Tuple
 
+FUZZY_CUTOFF = 0.7
+FUZZY_WARNING_THRESHOLD = 0.9
+
 MASTER_DIR = Path("data/master")
 
 
@@ -27,7 +30,7 @@ def match_sigla(sigla: str) -> Tuple[str, dict | None]:
     upper = sigla.upper()
     if upper in MASTER_CACHE:
         return upper, MASTER_CACHE[upper]
-    matches = get_close_matches(upper, MASTER_CACHE.keys(), n=1, cutoff=0.7)
+    matches = get_close_matches(upper, MASTER_CACHE.keys(), n=1, cutoff=FUZZY_CUTOFF)
     if matches:
         match = matches[0]
         return match, MASTER_CACHE[match]

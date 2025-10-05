@@ -31,6 +31,8 @@ def normalize(records: Iterable[dict[str, str]]) -> List[dict[str, str]]:
             data["num_ordem"] = str(counters[tipo])
         else:
             data["num_ordem"] = data.get("num_ordem", "")
+        original_sigla = data.get("sigla", "")
+        data["_sigla_original"] = original_sigla
         if data["sigla"]:
             data["sigla"], metadata = match_sigla(data["sigla"])
             if metadata:

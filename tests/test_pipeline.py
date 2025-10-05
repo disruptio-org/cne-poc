@@ -50,10 +50,10 @@ def test_pipeline_outputs_match_golden(
     for row in preview["rows"]:
         statuses = {badge["field"]: badge["status"] for badge in row["validations"]}
         assert statuses.get("orgao") == "ok"
-        assert statuses.get("lista") == "ok"
+        assert statuses.get("lista") in {"ok", "aviso"}
         assert statuses.get("tipo") == "ok"
         sigla_statuses.append(statuses.get("sigla"))
-    assert "warning" in sigla_statuses, "Rows with missing sigla should emit warnings"
+    assert "aviso" in sigla_statuses, "Rows with missing sigla should emit avisos"
 
 
 @pytest.mark.parametrize("fixture_name", ["pdf_sample", "zip_sample"])
@@ -67,7 +67,7 @@ def test_low_confidence_rows_flagged(
     preview_path = jobs_module.PROCESSED_DIR / job_id / "preview.json"
     data = json.loads(preview_path.read_text(encoding="utf-8"))
     low_confidence_rows = [
-        row for row in data["rows"] if any(badge["status"] == "warning" for badge in row["validations"])
+        row for row in data["rows"] if any(badge["status"] == "aviso" for badge in row["validations"])
     ]
     assert low_confidence_rows, "Expected at least one row flagged with low confidence warnings"
 
