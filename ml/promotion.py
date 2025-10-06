@@ -8,7 +8,7 @@ from .training import build_training_corpus
 
 
 def _score_dataset(rows: List[dict[str, str]]) -> float:
-    lengths = [len(row.get("descricao", "")) for row in rows]
+    lengths = [len(row.get("NOME_CANDIDATO", "")) for row in rows]
     return mean(lengths) if lengths else 0.0
 
 

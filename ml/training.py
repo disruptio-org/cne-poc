@@ -23,7 +23,7 @@ def _load_rows(job_id: str) -> List[dict[str, str]]:
     if not csv_path.exists():
         return []
     with csv_path.open(encoding="utf-8") as handle:
-        reader = csv.DictReader(handle)
+        reader = csv.DictReader(handle, delimiter=";")
         return list(reader)
 
 
@@ -39,6 +39,10 @@ def train(model_name: str = "baseline") -> None:
     rows = build_training_corpus()
     metrics = {
         "rows": len(rows),
-        "unique_siglas": len({row.get("sigla") for row in rows if row.get("sigla")}),
+        "unique_siglas": len({row.get("SIGLA") for row in rows if row.get("SIGLA")}),
     }
     registry.register(model_name=model_name, metrics=metrics)
+
+
+if __name__ == "__main__":  # pragma: no cover - convenience CLI
+    train()

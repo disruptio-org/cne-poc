@@ -16,7 +16,7 @@ seed:
 	python scripts/seed_master_data.py
 
 develop: seed
-        @echo "Run 'make api', 'make worker' and 'make web' in separate terminals."
+	@echo "Run 'make api', 'make worker' and 'make web' in separate terminals."
 
 test:
-pytest -q
+	pytest -q
