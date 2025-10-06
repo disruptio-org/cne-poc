@@ -25,6 +25,11 @@ Alternatively, run everything via Docker:
 docker-compose up --build
 ```
 
+### Python environment notes
+
+- Install dependencies into a virtual environment with `pip install -r requirements.txt` before running the Make targets.
+- Ensure the upstream [`pydantic`](https://pydantic.dev/) package is available; avoid creating a local module named `pydantic/` inside the repo because it will shadow the dependency that FastAPI imports at runtime.
+
 ## Data directories
 
 - `data/incoming/<job_id>/`: raw uploads
